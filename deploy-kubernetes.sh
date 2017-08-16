@@ -57,14 +57,14 @@ function build_vlan_arg {
 # Args: $1: name
 function create_server {
   # Creates the machine
-  echo "Creating $1 with $CPU cpu(s) and $MEMORY GB of RAM"
+  echo "\n[INFO] Creating $1 with $CPU cpu(s) and $MEMORY GB of RAM"
   TEMP_FILE=/tmp/create-vs.out
   build_vlan_arg "--vlan-private" $PRIVATE_VLAN
   PRIVATE_ARG=$VLAN_ARG
   build_vlan_arg "--vlan-public" $PUBLIC_VLAN
   PUBLIC_ARG=$VLAN_ARG
 
-  echo "Deploying $SERVER_MESSAGE $1"
+  echo "\n[INFO] Deploying $SERVER_MESSAGE $1"
   echo "Command: slcli $CLI_TYPE create --hostname $1 --domain $DOMAIN $SPEC --datacenter $DATACENTER --billing $BILLING_METHOD  $PRIVATE_ARG $PUBLIC_ARG"
   yes | slcli $CLI_TYPE create --hostname $1 --domain $DOMAIN $SPEC --datacenter $DATACENTER --billing $BILLING_METHOD  $PRIVATE_ARG $PUBLIC_ARG | tee $TEMP_FILE
 }
@@ -84,19 +84,20 @@ function get_server_id {
 function create_kube {
   # Check whether kube master exists
   TEMP_FILE=/tmp/deploy-kubernetes.out
+  echo "\n[INFO] Checking whether kube master exists"
   slcli $CLI_TYPE list --hostname $1 --domain $DOMAIN | grep $1 > $TEMP_FILE
   COUNT=`wc $TEMP_FILE | awk '{print $1}'`
 
   # Determine whether to create the kube-master
   if [ $COUNT -eq 0 ]; then
-  create_server $1
+    create_server $1
   else
-  echo "$1 already created"
+    echo "\n[INFO] $1 is already created"
   fi
 
   # Wait kube master to be ready
   while true; do
-    echo "Waiting for $SERVER_MESSAGE $1 to be ready..."
+    echo "Waiting for $SERVER_MESSAGE $1 to be ready"
     get_server_id $1
     STATE=`slcli $CLI_TYPE detail $VS_ID | grep $STATUS_FIELD | awk '{print $2}'`
     if [ "$STATE" == "$STATUS_VALUE" ]; then
@@ -169,18 +170,18 @@ function update_hosts_file {
 #Args: $1: PASSWORD, $2: IP Address
 function set_ssh_key {
   #Remove entry from known_hosts
-  echo "\n[INFO] Finding to remove entry from known_hosts..."
+  echo "\n[INFO] Finding to remove entry from known_hosts"
   if [ -f "$KNOWN_HOSTS_FILE" ]
   then
     echo "\n[INFO] The known_hosts file is found."
     entry_count=`ssh-keygen -F $2 -f ${KNOWN_HOSTS_FILE} | wc -l`
     if [$entry_count -gt 0]
     then
-      echo "\n[INFO] Removing entry from known_hosts..."
+      echo "\n[INFO] Removing entry from known_hosts"
   	  ssh-keygen -R $2 -f $KNOWN_HOSTS_FILE
   	fi
   else
-  	echo "\n[INFO] The known_hosts file is not found."
+  	echo "\n[INFO] The known_hosts file is not found"
   fi
 
   # Log in to the machine
@@ -312,4 +313,4 @@ configure_kubectl
 
 # deploy_testapp
 
-echo "Congratulations! You can log on to the kube masters by issuing ssh root@$MASTER1_IP"
+echo "\[INFO] Congratulations! You can log on to the kube masters by issuing ssh root@$MASTER1_IP"
