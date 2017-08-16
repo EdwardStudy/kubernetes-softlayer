@@ -1,7 +1,9 @@
+# set -x
 
 KUBE_MASTER_PREFIX=kube-master-
 KUBE_NODE_PREFIX=kube-node-
 HOSTS=/tmp/ansible-hosts
+KNOWN_HOSTS_FILE=~/.ssh/known_hosts
 
 # This var is not used anymore
 TIMEOUT=600
@@ -66,6 +68,7 @@ function create_server {
   echo "Command: slcli $CLI_TYPE create --hostname $1 --domain $DOMAIN $SPEC --datacenter $DATACENTER --billing $BILLING_METHOD  $PRIVATE_ARG $PUBLIC_ARG"
   yes | slcli $CLI_TYPE create --hostname $1 --domain $DOMAIN $SPEC --datacenter $DATACENTER --billing $BILLING_METHOD  $PRIVATE_ARG $PUBLIC_ARG | tee $TEMP_FILE
 }
+slcli vm create --hostname kube-playground-ed --domain softlayer.com --cpu 8 --memory 8192 --os UBUNTU_LATEST_64 --datacenter lon02 --billing hourly --vlan-private 524954 --vlan-public 524956
 
 # Args: $1: name
 function get_server_id {
@@ -166,7 +169,19 @@ function update_hosts_file {
 #Args: $1: PASSWORD, $2: IP Address
 function set_ssh_key {
   #Remove entry from known_hosts
-  ssh-keygen -R $2
+  echo "\n[INFO] Finding to remove entry from known_hosts..."
+  if [ -f "$KNOWN_HOSTS_FILE" ]
+  then
+    echo "\n[INFO] The known_hosts file is found."
+    entry_count=`ssh-keygen -F $2 -f ${KNOWN_HOSTS_FILE} | wc -l`
+    if [$entry_count -gt 0]
+    then
+      echo "\n[INFO] Removing entry from known_hosts..."
+  	  ssh-keygen -R $2 -f $KNOWN_HOSTS_FILE
+  	fi
+  else
+  	echo "\n[INFO] The known_hosts file is not found."
+  fi
 
   # Log in to the machine
   sshpass -p $1 ssh-copy-id -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' root@$2
@@ -281,9 +296,10 @@ function deploy_testapp {
   kubectl create -f examples/guestbook/all-in-one/guestbook-all-in-one.yaml --validate=false
 }
 
-echo Using the following SoftLayer configuration
+echo "\n[INFO] Using the following SoftLayer configuration"
 slcli config show
 
+echo "\n[INFO] Creating the vm of master"
 create_masters
 create_nodes
 
