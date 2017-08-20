@@ -58,14 +58,14 @@ function build_vlan_arg {
 # Args: $1: name
 function create_server {
   # Creates the machine
-  echo "\n[INFO] Creating $1 with $CPU cpu(s) and $MEMORY GB of RAM"
+  echo -e "\n\033[32m[INFO] Creating $1 with $CPU cpu(s) and $MEMORY GB of RAM.\033[0m"
   TEMP_FILE=/tmp/create-vs.out
   build_vlan_arg "--vlan-private" $PRIVATE_VLAN
   PRIVATE_ARG=$VLAN_ARG
   build_vlan_arg "--vlan-public" $PUBLIC_VLAN
   PUBLIC_ARG=$VLAN_ARG
 
-  echo "\n[INFO] Deploying $SERVER_MESSAGE $1"
+  echo -e "\n\033[32m[INFO] Deploying $SERVER_MESSAGE $1.\033[0m"
   echo "Command: slcli $CLI_TYPE create --hostname $1 --domain $DOMAIN $SPEC --datacenter $DATACENTER --billing $BILLING_METHOD  $PRIVATE_ARG $PUBLIC_ARG"
   yes | slcli $CLI_TYPE create --hostname $1 --domain $DOMAIN $SPEC --datacenter $DATACENTER --billing $BILLING_METHOD  $PRIVATE_ARG $PUBLIC_ARG | tee $TEMP_FILE
 }
@@ -85,7 +85,7 @@ function get_server_id {
 function create_kube {
   # Check whether kube master exists
   TEMP_FILE=/tmp/deploy-kubernetes.out
-  echo "\n[INFO] Checking whether kube master exists"
+  echo -e "\n\033[32m[INFO] Checking whether kube master exists.\033[0m"
   slcli $CLI_TYPE list --hostname $1 --domain $DOMAIN | grep $1 > $TEMP_FILE
   COUNT=`wc $TEMP_FILE | awk '{print $1}'`
 
@@ -93,12 +93,12 @@ function create_kube {
   if [ $COUNT -eq 0 ]; then
     create_server $1
   else
-    echo "\n[INFO] $1 is already created"
+    echo -e "\n\033[32m[INFO] $1 is already created.\033[0m"
   fi
 
   # Wait kube master to be ready
   while true; do
-    echo "Waiting for $SERVER_MESSAGE $1 to be ready"
+    echo -e "\033[32m[INFO] Waiting for $SERVER_MESSAGE $1 to be ready.\033[0m"
     get_server_id $1
     STATE=`slcli $CLI_TYPE detail $VS_ID | grep $STATUS_FIELD | awk '{print $2}'`
     if [ "$STATE" == "$STATUS_VALUE" ]; then
@@ -176,7 +176,7 @@ function set_ssh_key {
   then
     echo -e "\n\033[32m[INFO] Checking host's entry after the known_hosts file is found.\033[0m"
     entry_count=`ssh-keygen -F $2 -f ${KNOWN_HOSTS_FILE} | wc -l`
-    if [$entry_count -gt 0]
+    if [ $entry_count -gt 0 ]
     then
       echo -e "\n\033[32m[INFO] Removing entry from known_hosts.\033[0m"
   	  ssh-keygen -R $2 -f $KNOWN_HOSTS_FILE
