@@ -73,7 +73,10 @@ slcli vm create --hostname kube-playground-ed --domain softlayer.com --cpu 8 --m
 
 # Args: $1: name
 function get_server_id {
+  echo -e "\n\033[32m[INFO] Getting VS_ID of $1.$DOMAIN.\033[0m"
+
   # Extract virtual server ID
+  echo "Command: slcli $CLI_TYPE list --hostname $1 --domain $DOMAIN | grep $1 > $TEMP_FILE"
   slcli $CLI_TYPE list --hostname $1 --domain $DOMAIN | grep $1 > $TEMP_FILE
 
   # Consider only the first returned result
@@ -100,6 +103,7 @@ function create_kube {
   while true; do
     echo -e "\033[32m[INFO] Waiting for $SERVER_MESSAGE $1 to be ready.\033[0m"
     get_server_id $1
+    echo "Command: slcli $CLI_TYPE detail $VS_ID | grep $STATUS_FIELD | awk '{print $2}'"
     STATE=`slcli $CLI_TYPE detail $VS_ID | grep $STATUS_FIELD | awk '{print $2}'`
     if [ "$STATE" == "$STATUS_VALUE" ]; then
       break
@@ -115,8 +119,10 @@ function obtain_root_pwd {
   get_server_id $1
 
   while [ -z $PASSWORD ]; do
+    echo -e "\n\033[32m[INFO] Obtaining root password for $1.\033[0m"
 
     # Obtain the root password
+    echo "Command: slcli $CLI_TYPE detail $VS_ID --passwords > $TEMP_FILE"
     slcli $CLI_TYPE detail $VS_ID --passwords > $TEMP_FILE
 
     # Remove "remote users"
@@ -134,10 +140,11 @@ function obtain_root_pwd {
 
 # Args $1: hostname
 function obtain_ip {
-  echo Obtaining IP address for $1
+  echo -e "\n\033[32m[INFO] Obtaining IP address for $1.\033[0m"
   get_server_id $1
 
-  echo Server: $VS_ID
+  echo -e "\n\033[32m[INFO] Server: $VS_ID.\033[0m"
+  echo "Command: slcli $CLI_TYPE detail $VS_ID --passwords > $TEMP_FILE"
   # Obtain the IP address
   slcli $CLI_TYPE detail $VS_ID --passwords > $TEMP_FILE
 
@@ -151,9 +158,10 @@ function obtain_ip {
 # From the standpoint of ansible, kube-master-2 is a 'node'
 function update_hosts_file {
   # Update ansible hosts file
-  echo Updating ansible hosts files
+  echo -e "\n\033[32m[INFO] Updating ansible hosts files.\033[0m"
   echo > $HOSTS
   echo "[kube-master]" >> $HOSTS
+
   obtain_ip ${KUBE_MASTER_PREFIX}1
   MASTER1_IP=$IP_ADDRESS
   echo "kube-master-1 ansible_host=$IP_ADDRESS ansible_user=root" >> $HOSTS
@@ -182,7 +190,7 @@ function set_ssh_key {
   	  ssh-keygen -R $2 -f $KNOWN_HOSTS_FILE
   	fi
   else
-  	echo -e "\n\033[32m[INFO] The known_hosts file is not found/\033[0m"
+    echo -e "\n\033[32m[INFO] The known_hosts file is not found.\033[0m"
   fi
 
   # Log in to the machine
@@ -192,13 +200,16 @@ function set_ssh_key {
 
 #Args: $1: master hostname $2: master IP
 function configure_master {
+  echo -e "\n\033[32m[INFO] Configuring master.\033[0m"
+
   # Get kube master password
   obtain_root_pwd $1
 
   # Set the SSH key
   set_ssh_key $PASSWORD $2
-
+  
   # Create inventory file
+  echo -e "\n\033[32m[INFO] Creating inventory file.\033[0m"
   INVENTORY=/tmp/inventory
   echo > $INVENTORY
   echo "[masters]" >> $INVENTORY
@@ -217,6 +228,7 @@ function configure_master {
   done
 
   # Create ansible.cfg
+  echo -e "\n\033[32m[INFO] Creating ansible.cfg.\033[0m"
   ANSIBLE_CFG=/tmp/ansible.cfg
   echo "[defaults]" > $ANSIBLE_CFG
   echo "host_key_checking = False" >> $ANSIBLE_CFG
@@ -225,7 +237,7 @@ function configure_master {
 
 #Args: $1: IP address
 function install_python {
-  echo Installing python
+  echo -e "\n\033[32m[INFO] Installing python.\033[0m"
 
   # SSH to host
   ssh -o StrictHostKeyChecking=no root@$1 \
@@ -241,12 +253,14 @@ function configure_masters {
   install_python $MASTER1_IP
 
   # Execute kube-master playbook
-  ansible-playbook -v -i $HOSTS ansible/kube-master.yaml -e "master_ip=$MASTER1_IP"
+  echo -e "\n\033[32m[INFO] Executing kube-master playbook.\033[0m"
+  echo "Command: ansible-playbook -v -i $HOSTS ansible/kube-master.yaml -e 'master_ip=$MASTER1_IP'"
+  ansible-playbook -vvvv -i $HOSTS ansible/kube-master.yaml -e "master_ip=$MASTER1_IP"
 }
 
 # Args $1 Node name
 function configure_node {
-  echo Configuring node $1
+  echo -e "\n\033[32m[INFO] Configuring node $1.\033[0m"
 
   # Get kube master password
   obtain_root_pwd $1
@@ -264,7 +278,7 @@ function configure_node {
 }
 
 function configure_nodes {
-  echo Configuring nodes
+  echo -e "\n\033[32m[INFO] Configuring nodes.\033[0m"
   for(( x=1; x <= ${NUM_NODES}; x++))
   do
     configure_node "${KUBE_NODE_PREFIX}${x}"
@@ -302,12 +316,14 @@ function deploy_testapp {
 echo -e "\n\033[32m[INFO] Using the following SoftLayer configuration.\033[0m"
 slcli config show
 
-echo -e "\n\033[32m[INFO] Creating the vm of master.\033[0m"
+echo -e "\n\033[32m[INFO] Creating the vm of kubes.\033[0m"
 create_masters
 create_nodes
 
+echo -e "\n\033[32m[INFO] Updating the vm of master.\033[0m"
 update_hosts_file
 
+echo -e "\n\033[32m[INFO] Configuring the vm of kubes.\033[0m"
 configure_masters
 configure_nodes
 
