@@ -4,6 +4,7 @@ KUBE_MASTER_PREFIX=kube-master-
 KUBE_NODE_PREFIX=kube-node-
 HOSTS=/tmp/ansible-hosts
 KNOWN_HOSTS_FILE=~/.ssh/known_hosts
+SSH_ID_KEY=~/.ssh/k8s_rsa.pub
 
 # This var is not used anymore
 TIMEOUT=600
@@ -170,22 +171,23 @@ function update_hosts_file {
 #Args: $1: PASSWORD, $2: IP Address
 function set_ssh_key {
   #Remove entry from known_hosts
-  echo "\n[INFO] Finding to remove entry from known_hosts"
+  echo -e "\n\033[32m[INFO] Finding to remove entry from known_hosts.\033[0m"
   if [ -f "$KNOWN_HOSTS_FILE" ]
   then
-    echo "\n[INFO] The known_hosts file is found."
+    echo -e "\n\033[32m[INFO] Checking host's entry after the known_hosts file is found.\033[0m"
     entry_count=`ssh-keygen -F $2 -f ${KNOWN_HOSTS_FILE} | wc -l`
     if [$entry_count -gt 0]
     then
-      echo "\n[INFO] Removing entry from known_hosts"
+      echo -e "\n\033[32m[INFO] Removing entry from known_hosts.\033[0m"
   	  ssh-keygen -R $2 -f $KNOWN_HOSTS_FILE
   	fi
   else
-  	echo "\n[INFO] The known_hosts file is not found"
+  	echo -e "\n\033[32m[INFO] The known_hosts file is not found/\033[0m"
   fi
 
   # Log in to the machine
-  sshpass -p $1 ssh-copy-id -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' root@$2
+  echo -e "\n\033[32m[INFO] Copying public key to remote.\033[0m"
+  sshpass -p $1 ssh-copy-id -i $SSH_ID_KEY -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' root@$2
 }
 
 #Args: $1: master hostname $2: master IP
@@ -297,10 +299,10 @@ function deploy_testapp {
   kubectl create -f examples/guestbook/all-in-one/guestbook-all-in-one.yaml --validate=false
 }
 
-echo "\n[INFO] Using the following SoftLayer configuration"
+echo -e "\n\033[32m[INFO] Using the following SoftLayer configuration.\033[0m"
 slcli config show
 
-echo "\n[INFO] Creating the vm of master"
+echo -e "\n\033[32m[INFO] Creating the vm of master.\033[0m"
 create_masters
 create_nodes
 
@@ -313,4 +315,4 @@ configure_kubectl
 
 # deploy_testapp
 
-echo "\[INFO] Congratulations! You can log on to the kube masters by issuing ssh root@$MASTER1_IP"
+echo -e "\n\033[32m[INFO] Congratulations! You can log on to the kube masters by issuing ssh root@$MASTER1_IP.\033[0m"

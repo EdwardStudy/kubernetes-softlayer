@@ -5,7 +5,7 @@
 2. SoftLayer CLI - `sudo pip install --upgrade pip softlayer`
 3. Ansible v2.0 or newer- `sudo apt-get install ansible`
 4. sshpass - `sudo apt-get install sshpass`
-5. A default SSH key must exist on your local platform.  If one does not exist, this can be created via the command `ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa`.
+5. A default SSH key must exist on your local platform.  If one does not exist, this can be created via the command `ssh-keygen -t rsa -N "" -f ~/.ssh/k8s_rsa`.
 
 NOTE:  If you encounter SSH issues running from Ubuntu, install `sudo pip install requests[security]` first.  If that does not eliminate the issue, you may be hitting an issue with GNOME Keyring.  See [this article](https://chrisjean.com/ubuntu-ssh-fix-for-agent-admitted-failure-to-sign-using-the-key/) for a fix.
 
